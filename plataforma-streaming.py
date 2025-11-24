@@ -196,27 +196,117 @@ def clasificar_contenido(contenido):
 
 #Programa principal
 plataforma=PlataformaStreaming()
-usuario1=crear_usuario()
-usuario2=crear_usuario()
-usuario3=crear_usuario()
+usuario1=Usuario("Alice",25,["Ciencia Ficcion","Drama"])
+usuario2=Usuario("Bob",30,["Accion","Comedia"])
+usuario3=Usuario("Charlie",28,["Suspenso","Terror"])
 gestionar_usuarios(plataforma,usuario1,"agregar")
 gestionar_usuarios(plataforma,usuario2,"agregar")
 gestionar_usuarios(plataforma,usuario3,"agregar")
 
-pelicula1=crear_contenido()
-pelicula2=crear_contenido()
-serie1=crear_contenido()
-serie2=crear_contenido()
+pelicula1=Contenido(peliculas=True,series=False,titulo="Inception",genero=["Ciencia Ficcion","Accion"])
+pelicula2=Contenido(peliculas=True,series=False,titulo="The Godfather",genero=["Crimen","Drama"])
+serie1=Contenido(peliculas=False,series=True,titulo="Stranger Things",genero=["Ciencia Ficcion","Suspenso"])
+serie2=Contenido(peliculas=False,series=True,titulo="Breaking Bad",genero=["Crimen","Drama"])
 insertar_contenido(plataforma,pelicula1,"película")
 insertar_contenido(plataforma,pelicula2,"película")
 insertar_contenido(plataforma,serie1,"serie")
 insertar_contenido(plataforma,serie2,"serie")
 
-
+print("Bienvenido a la plataforma de streaming WonderlandTV.")
 menu="""
-Bienvenido a la plataforma de streaming WonderlandTV. Por favor, seleccione una opción:
+Por favor, seleccione una opción:
 1.gestionar usuarios
 2.gestionar contenido
+3.Acceder como un usuario
+4.salir
 """
+print(menu)
+opcion=int(input())
+while opcion not in [1,2,3,4]:
+    print("Opción inválida.")
+    print(menu)
+    opcion=int(input())
+while opcion != 4:
+    if opcion==1:
+        menu_usuarios="""
+        Gestión de usuarios:
+        1.Agregar usuario
+        2.Eliminar usuario
+        3.Mostrar datos de usuario
+        """
+        opcion_usuario=int(input(menu_usuarios))
+        if opcion_usuario==1:
+            nuevo_usuario=crear_usuario()
+            gestionar_usuarios(plataforma,nuevo_usuario,"agregar")
+        elif opcion_usuario==2:
+            nombre_eliminar=input("Ingrese el nombre del usuario a eliminar: ")
+            usuario_eliminar=Usuario(nombre_eliminar,0,[])
+            gestionar_usuarios(plataforma,usuario_eliminar,"eliminar")
+        elif opcion_usuario==3:
+            nombre_mostrar=input("Ingrese el nombre del usuario a mostrar: ")
+            usuario_mostrar=Usuario(nombre_mostrar,0,[])
+            datos=gestionar_usuarios(plataforma,usuario_mostrar,"mostrar")
+            if datos is not None:
+                print(datos)
+            else:
+                print("Usuario no encontrado.")
+        else:
+            print("Opción inválida.")
+    elif opcion==2:
+        menu_contenido="""
+        Gestión de contenido:
+        1.Agregar contenido
+        2.Ver catálogo
+        """
+        opcion_contenido=int(input(menu_contenido))
+        if opcion_contenido==1:
+            nuevo_contenido=crear_contenido()
+            tipo=nuevo_contenido.serie and "serie" or "película"
+            insertar_contenido(plataforma,nuevo_contenido,tipo)
+        elif opcion_contenido==2:
+            tipo_catalogo=input("Ingrese el tipo de catálogo a mostrar (serie o película): ")
+            while tipo_catalogo not in ["serie","película"]:
+                tipo_catalogo=input("Tipo inválido. Ingrese el tipo de catálogo a mostrar (serie o película): ")
+            catalogo=mostrar_catalogo(plataforma,tipo_catalogo)
+            print("Catálogo de "+tipo_catalogo+"s:\n"+catalogo)
+        else:
+            print("Opción inválida.")
+    elif opcion==3:
+        nombre_usuario=input("Ingrese su nombre de usuario: ")
+        actual=plataforma.usuarios.info
+        usuario_actual=None
+        while actual is not None:
+            if actual.nombre==nombre_usuario:
+                usuario_actual=actual
+            actual=actual.sig
+        if usuario_actual is not None:
+            print("Bienvenido, "+usuario_actual.nombre+"!")
+            menu_usuario="""
+            Gestión de usuario:
+            1.Ver catálogo según preferencias
+            2.Ver historial
+            """
+            print(menu_usuario)
+            opcion_usuario=int(input())
+            if opcion_usuario==1:
+                for preferencia in usuario_actual.preferencias:
+                    resultados_series=buscar_contenido(preferencia,plataforma.catalogo_series.info,"serie")
+                    resultados_peliculas=buscar_contenido(preferencia,plataforma.catalogo_peliculas.info,"película")
+                    print("Resultados para la preferencia '"+preferencia+"':")
+                    print("Series:")
+                    for serie in resultados_series:
+                        print("- "+serie.titulo)
+                    print("Películas:")
+                    for pelicula in resultados_peliculas:
+                        print("- "+pelicula.titulo)
+            elif opcion_usuario==2:
+                print("Historial de visualización:")
+                for titulo in usuario_actual.historial:
+                    print("- "+titulo)
+        else:
+            print("Usuario no encontrado.")
+    print(menu)
+    opcion=int(input())
+print("Gracias por usar WonderlandTV. ¡Hasta luego!")
 
 
