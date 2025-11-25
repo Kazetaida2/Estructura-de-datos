@@ -24,28 +24,34 @@ class Usuario():
         self.sig=None
 
 class Contenido():
-    #Creamos la clase Contenido
-    def __init__(self, pelicula, serie, titulo, genero = None, popularidad  = 0, likes = 0):
-        #Agregamos información básica y otra que se usará posteriormente
+    def __init__(self, pelicula, serie, titulo, genero=None, popularidad=0, likes=0):
         self.pelicula = pelicula
         self.serie = serie
         self.titulo = titulo
-        self.temporadas = 0
-        self.episodio = []
-        self.duracion = 0
-        self.genero = genero if genero else ["Accion", "Animacion", "Ciencia Ficcion", "Comedia", "Crimen", "Drama", "Fantasia", "Romance", "Suspenso", "Terror"]
-        self.popularidad = popularidad
-        self.likes = likes
-        self.comentarios = []
-        self.sig = None
+        self.temporadas = 0           
+        self.episodios = []           
+        self.duracion = 0             
+        if genero:
+            self.genero = genero
+        else:
+            self.genero = ["Accion", "Animacion", "Ciencia Ficcion", "Comedia", "Crimen", "Drama", "Fantasia", "Romance", "Suspenso", "Terror"]
+        self.popularidad = popularidad  # Aumenta cuando los usuarios lo ven
+        self.likes = likes              # Aumenta según puntaje dado por usuarios
+        self.comentarios = []           # Lista de comentarios de usuarios
+
 
 class Catalogo():
-    def __init__(self,usuario):
-        self.usuario=usuario
-        self.contenido=None
-        self.izq=None
-        self.der=None
-        self.tamaño=0
+    def __init__(self):
+        self.contenido = None   # Nodo raíz
+        self.izq = None
+        self.der = None
+        self.tamanio = 0
+
+class NodoCatalogo:
+    def __init__(self, contenido):
+        self.contenido = contenido
+        self.izq = None
+        self.der = None
 
 #Funciones para gestionar usuarios y contenido
 def crear_contenido():
@@ -65,25 +71,26 @@ def crear_contenido():
         n_contenido=Contenido(peliculas=False,series=True,titulo=titulo,genero=genero)
     return n_contenido
 
-def insertar_contenido(plataforma,contenido,tipo):
-    if tipo=="serie":
-        if plataforma.catalogo_series.tamaño==0:
-            plataforma.catalogo_series.contenido=contenido
-        else:
-            actual=plataforma.catalogo_series.contenido
-            while actual.sig is not None:
-                actual=actual.sig
-            actual.sig=contenido
-        plataforma.catalogo_series.tamaño+=1
+def insertar_en_arbol(nodo, contenido):
+    if nodo is None:
+        nuevo = Catalogo()
+        nuevo.contenido = contenido
+        return nuevo
+
+    if contenido.popularidad < nodo.contenido.popularidad:
+        nodo.izq = insertar_en_arbol(nodo.izq, contenido)
     else:
-        if plataforma.catalogo_peliculas.tamaño==0:
-            plataforma.catalogo_peliculas.contenido=contenido
-        else:
-            actual=plataforma.catalogo_peliculas.contenido
-            while actual.sig is not None:
-                actual=actual.sig
-            actual.sig=contenido
-        plataforma.catalogo_peliculas.tamaño+=1
+        nodo.der = insertar_en_arbol(nodo.der, contenido)
+
+    return nodo
+
+def insertar_contenido(plataforma, contenido, tipo):
+    if tipo == "serie":
+        plataforma.catalogo_series.contenido = insertar_en_arbol(plataforma.catalogo_series.contenido, contenido)
+        plataforma.catalogo_series.tamanio += 1
+    else:
+        plataforma.catalogo_peliculas.contenido = insertar_en_arbol(plataforma.catalogo_peliculas.contenido, contenido)
+        plataforma.catalogo_peliculas.tamanio += 1
 
 def crear_usuario():
     n_nombre=input("Ingrese el nombre del usuario: ")
@@ -149,31 +156,44 @@ def agregar_comentario(contenido):
     contenido.comentarios.append(comentario)
 
 #Función para mostrar el catálogo
-def mostrar_catalogo(plataforma,tipo):
-    resultado=""
-    if tipo=="serie":
-        actual=plataforma.catalogo_series.info
-        while actual is not None:
-            resultado+=actual.titulo+"\n"
-            actual=actual.sig
+def recorrer_inorder(nodo, lista):
+    if nodo is not None:
+        recorrer_inorder(nodo.izq, lista)
+        lista.append(nodo.contenido.titulo + " (Popularidad: " + str(nodo.contenido.popularidad) + ")")
+        recorrer_inorder(nodo.der, lista)
+    return lista
+
+def mostrar_catalogo(plataforma, tipo):
+    lista_ordenada = []
+    if tipo == "serie":
+        if plataforma.catalogo_series.contenido is None:
+            return None
+        recorrer_inorder(plataforma.catalogo_series.contenido, lista_ordenada)
     else:
-        actual=plataforma.catalogo_peliculas.info
-        while actual is not None:
-            resultado+=actual.titulo+"\n"
-            actual=actual.sig
+        if plataforma.catalogo_peliculas.contenido is None:
+            return None
+        recorrer_inorder(plataforma.catalogo_peliculas.contenido, lista_ordenada)
+    resultado = ""
+    for item in lista_ordenada:
+        resultado = resultado + item + "\n"
+    
     return resultado
 
 #funcion para buscar contenido segun preferencias (de forma recursiva)
-def buscar_contenido(preferencia,contenido,tipo):
+def buscar_contenido(preferencia,catalogo,tipo):
     resultados=[]
-    if contenido is not None:
+    if catalogo.contenido is not None:
         if tipo=="serie":
-            if preferencia in contenido.genero:
-                resultados.append(contenido)
+            if preferencia in catalogo.contenido.genero:
+                resultados.append(catalogo.contenido)
+                catalogo.izq=buscar_contenido(preferencia,catalogo.izq,tipo)
+                catalogo.der=buscar_contenido(preferencia,catalogo.der,tipo)
+                
         else:
-            if preferencia in contenido.genero:
-                resultados.append(contenido)
-        return buscar_contenido(preferencia,contenido.sig,tipo)
+            if preferencia in catalogo.contenido.genero:
+                resultados.append(catalogo.contenido)
+                catalogo.izq=buscar_contenido(preferencia,catalogo.izq,tipo)
+                catalogo.der=buscar_contenido(preferencia,catalogo.der,tipo)
     else:
         return resultados
 
@@ -195,7 +215,7 @@ def clasificar_contenido(contenido):
 
 
 #Programa principal
-plataforma=PlataformaStreaming()
+plataforma=Catalogo()
 usuario1=Usuario("Alice",25,["Ciencia Ficcion","Drama"])
 usuario2=Usuario("Bob",30,["Accion","Comedia"])
 usuario3=Usuario("Charlie",28,["Suspenso","Terror"])
