@@ -213,6 +213,14 @@ def clasificar_contenido(contenido):
         resultado +=clasificar_contenido(contenido)
     return resultado
 
+def generar_recomendaciones(plataforma):
+    todas_series=[]
+    todas_peliculas=[]
+    recorrer_inorder(plataforma.catalogo_series.contenido,todas_series)
+    recorrer_inorder(plataforma.catalogo_peliculas.contenido,todas_peliculas)
+    series_ordenadas=clasificar_contenido(todas_series)
+    peliculas_ordenadas=clasificar_contenido(todas_peliculas)
+    return series_ordenadas[:5],peliculas_ordenadas[:5]
 
 #Programa principal
 plataforma=Catalogo()
@@ -305,13 +313,14 @@ while opcion != 4:
             Gestión de usuario:
             1.Ver catálogo según preferencias
             2.Ver historial
+            3.Generar recomendaciones
             """
             print(menu_usuario)
             opcion_usuario=int(input())
             if opcion_usuario==1:
                 for preferencia in usuario_actual.preferencias:
-                    resultados_series=buscar_contenido(preferencia,plataforma.catalogo_series.info,"serie")
-                    resultados_peliculas=buscar_contenido(preferencia,plataforma.catalogo_peliculas.info,"película")
+                    resultados_series=buscar_contenido(preferencia,plataforma.catalogo_series.contenido,"serie")
+                    resultados_peliculas=buscar_contenido(preferencia,plataforma.catalogo_peliculas.contenido,"película")
                     print("Resultados para la preferencia '"+preferencia+"':")
                     print("Series:")
                     for serie in resultados_series:
@@ -320,9 +329,20 @@ while opcion != 4:
                     for pelicula in resultados_peliculas:
                         print("- "+pelicula.titulo)
             elif opcion_usuario==2:
-                print("Historial de visualización:")
-                for titulo in usuario_actual.historial:
-                    print("- "+titulo)
+                if usuario_actual.historial is None:
+                    print("No hay historial de visualización.")
+                else:
+                    print("Historial de visualización:")
+                    for titulo in usuario_actual.historial:
+                        print("- "+titulo)
+            elif opcion_usuario==3:
+                series_ordenadas, peliculas_ordenadas = generar_recomendaciones(plataforma)
+                print("Recomendaciones de series:")
+                for serie in series_ordenadas[:5]:
+                    print("- "+serie.titulo)
+                print("Recomendaciones de películas:")
+                for pelicula in peliculas_ordenadas[:5]:
+                    print("- "+pelicula.titulo)
         else:
             print("Usuario no encontrado.")
     print(menu)
