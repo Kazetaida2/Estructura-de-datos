@@ -93,26 +93,43 @@ def insertar_contenido(plataforma, contenido, tipo):
         plataforma.catalogo_peliculas.tamanio += 1
 
 def crear_usuario():
-    n_nombre=input("Ingrese el nombre del usuario: ")
-    n_edad=int(input("Ingrese la edad del usuario: "))
-    n_preferencias=input("Ingrese las preferencias del usuario (separadas por comas): ")
-    while n_preferencias not in ["Accion", "Animacion", "Ciencia Ficcion", "Comedia", "Crimen", "Drama", "Fantasia", "Romance", "Suspenso", "Terror"] or "," not in n_preferencias:
-        n_preferencias=input("Preferencia o sintaxis inválidas. Ingrese las preferencias del usuario (separadas por comas): ")
-    n_preferencias=n_preferencias.split(",")
-    usuario=Usuario(n_nombre,n_edad,n_preferencias)
+    generos_validos = ["Accion", "Animacion", "Ciencia Ficcion", "Comedia", "Crimen", "Drama", "Fantasia", "Romance", "Suspenso", "Terror"]
+    n_nombre = input("Ingrese el nombre del usuario: ")
+    n_edad = int(input("Ingrese la edad del usuario: "))
+    n_preferencias = input("Ingrese las preferencias del usuario (separadas por comas): ")
+    lista_preferencias = [p.strip().title() for p in n_preferencias.split(",")]
+    while not all(pref in generos_validos for pref in lista_preferencias):
+        print("Preferencia o sintaxis inválidas. Intente nuevamente.")
+        n_preferencias = input("Ingrese las preferencias del usuario (separadas por comas): ")
+        lista_preferencias = [p.strip().title() for p in n_preferencias.split(",")]
+    usuario = Usuario(n_nombre, n_edad, lista_preferencias)
     return usuario
 
 def mostrar_datos_usuario(usuario):
-    str="Nombre: "+usuario.nombre+" \nEdad: "+str(usuario.edad)+" \nPreferencias: "+" "+usuario.preferencias+" \nHistorial: "+" "+usuario.historial
-    return str
+    datos="Nombre: "+usuario.nombre+"\n"
+    datos+="Edad: "+str(usuario.edad)+"\n"
+    datos+="Preferencias: "+", ".join(usuario.preferencias)+"\n"
+    datos+="Historial de visualización: "
+    if usuario.historial is not None and len(usuario.historial)>0:
+        datos+="\n- " + "\n- ".join(usuario.historial)+"\n"
+    else:
+        datos+="No hay historial de visualización.\n"
+    return datos
 
+def usuarios_existentes(plataforma):
+    print("Usarios existentes:")
+    actual=plataforma.usuarios.info
+    while actual is not None:
+        print("- "+actual.nombre)
+        actual=actual.sig
+    
 def gestionar_usuarios(plataforma,usuario,accion):
     #si se desea agregar un usuario
     if accion=="agregar":
-        if plataforma.usuarios.tamaño==0:
+        if plataforma.usuarios.info is None:  # Corrección aquí
             plataforma.usuarios.info=usuario
         else:
-            actual=plataforma.usuarios.info
+            actual=plataforma.usuarios.info  # Y aquí
             while actual.sig is not None:
                 actual=actual.sig
             actual.sig=usuario
@@ -180,50 +197,56 @@ def mostrar_catalogo(plataforma, tipo):
     return resultado
 
 #funcion para buscar contenido segun preferencias (de forma recursiva)
-def buscar_contenido(preferencia,catalogo,tipo):
-    resultados=[]
-    if catalogo.contenido is not None:
-        if tipo=="serie":
-            if preferencia in catalogo.contenido.genero:
-                resultados.append(catalogo.contenido)
-                catalogo.izq=buscar_contenido(preferencia,catalogo.izq,tipo)
-                catalogo.der=buscar_contenido(preferencia,catalogo.der,tipo)
-                
-        else:
-            if preferencia in catalogo.contenido.genero:
-                resultados.append(catalogo.contenido)
-                catalogo.izq=buscar_contenido(preferencia,catalogo.izq,tipo)
-                catalogo.der=buscar_contenido(preferencia,catalogo.der,tipo)
-    else:
+def buscar_contenido(preferencia, catalogo, tipo):
+    """
+    Busca contenido en un árbol (Catalogo node) según la preferencia de género.
+    catalogo: una instancia de Catalogo (nodo) o None.
+    """
+    resultados = []
+    # Caso base: nodo vacío
+    if catalogo is None:
         return resultados
+    # Si el nodo contiene contenido, chequear y recorrer subárboles
+    if catalogo.contenido is not None:
+        if preferencia in catalogo.contenido.genero:
+            resultados.append(catalogo.contenido)
+    # Recorremos recursivamente
+    resultados += buscar_contenido(preferencia, catalogo.izq, tipo)
+    resultados += buscar_contenido(preferencia, catalogo.der, tipo)
+    return resultados
 
 #funcion para clasificar contenido segun popularidad (de forma recursiva)
 def clasificar_contenido(contenido):
     resultado=[]
     if contenido == []:
         return []  # caso base: lista vacía
-    else:
-        mayor = contenido[0]
-        for c in contenido:
-            if c.popularidad > mayor.popularidad:
-                mayor = c
-        resultado.append(mayor)
-        contenido.remove(mayor)  # quitamos el de mayor popularidad
+    else:# quitamos el de mayor popularidad
+        mayor_popularidad = -1
+        indice_mayor = -1
+        for i in range(len(contenido)):
+            if contenido[i].popularidad > mayor_popularidad:
+                mayor_popularidad = contenido[i].popularidad
+                indice_mayor = i
+        resultado.append(contenido[indice_mayor])
+        contenido.pop(indice_mayor)
         # Recursión para clasificar el resto
         resultado +=clasificar_contenido(contenido)
     return resultado
 
-def generar_recomendaciones(plataforma):
-    todas_series=[]
-    todas_peliculas=[]
-    recorrer_inorder(plataforma.catalogo_series.contenido,todas_series)
-    recorrer_inorder(plataforma.catalogo_peliculas.contenido,todas_peliculas)
-    series_ordenadas=clasificar_contenido(todas_series)
-    peliculas_ordenadas=clasificar_contenido(todas_peliculas)
-    return series_ordenadas[:5],peliculas_ordenadas[:5]
+def generar_recomendaciones(plataforma,tipo):
+    if tipo=="serie":
+        todas_series=[]
+        recorrer_inorder(plataforma.catalogo_series.contenido,todas_series)
+        series_ordenadas=clasificar_contenido(todas_series)
+        return series_ordenadas[:5]
+    else:
+        todas_peliculas=[]
+        recorrer_inorder(plataforma.catalogo_peliculas.contenido,todas_peliculas)
+        peliculas_ordenadas=clasificar_contenido(todas_peliculas)
+        return peliculas_ordenadas[:5]
 
 #Programa principal
-plataforma=Catalogo()
+plataforma=PlataformaStreaming()
 usuario1=Usuario("Alice",25,["Ciencia Ficcion","Drama"])
 usuario2=Usuario("Bob",30,["Accion","Comedia"])
 usuario3=Usuario("Charlie",28,["Suspenso","Terror"])
@@ -231,10 +254,10 @@ gestionar_usuarios(plataforma,usuario1,"agregar")
 gestionar_usuarios(plataforma,usuario2,"agregar")
 gestionar_usuarios(plataforma,usuario3,"agregar")
 
-pelicula1=Contenido(peliculas=True,series=False,titulo="Inception",genero=["Ciencia Ficcion","Accion"])
-pelicula2=Contenido(peliculas=True,series=False,titulo="The Godfather",genero=["Crimen","Drama"])
-serie1=Contenido(peliculas=False,series=True,titulo="Stranger Things",genero=["Ciencia Ficcion","Suspenso"])
-serie2=Contenido(peliculas=False,series=True,titulo="Breaking Bad",genero=["Crimen","Drama"])
+pelicula1=Contenido(pelicula=True,serie=False,titulo="Inception",genero=["Ciencia Ficcion","Accion"])
+pelicula2=Contenido(pelicula=True,serie=False,titulo="The Godfather",genero=["Crimen","Drama"])
+serie1=Contenido(pelicula=False,serie=True,titulo="Stranger Things",genero=["Ciencia Ficcion","Suspenso"])
+serie2=Contenido(pelicula=False,serie=True,titulo="Breaking Bad",genero=["Crimen","Drama"])
 insertar_contenido(plataforma,pelicula1,"película")
 insertar_contenido(plataforma,pelicula2,"película")
 insertar_contenido(plataforma,serie1,"serie")
@@ -267,10 +290,12 @@ while opcion != 4:
             nuevo_usuario=crear_usuario()
             gestionar_usuarios(plataforma,nuevo_usuario,"agregar")
         elif opcion_usuario==2:
+            usuarios_existentes(plataforma)
             nombre_eliminar=input("Ingrese el nombre del usuario a eliminar: ")
             usuario_eliminar=Usuario(nombre_eliminar,0,[])
             gestionar_usuarios(plataforma,usuario_eliminar,"eliminar")
         elif opcion_usuario==3:
+            usuarios_existentes(plataforma)
             nombre_mostrar=input("Ingrese el nombre del usuario a mostrar: ")
             usuario_mostrar=Usuario(nombre_mostrar,0,[])
             datos=gestionar_usuarios(plataforma,usuario_mostrar,"mostrar")
@@ -300,6 +325,7 @@ while opcion != 4:
         else:
             print("Opción inválida.")
     elif opcion==3:
+        usuarios_existentes(plataforma)
         nombre_usuario=input("Ingrese su nombre de usuario: ")
         actual=plataforma.usuarios.info
         usuario_actual=None
@@ -320,7 +346,7 @@ while opcion != 4:
             if opcion_usuario==1:
                 for preferencia in usuario_actual.preferencias:
                     resultados_series=buscar_contenido(preferencia,plataforma.catalogo_series.contenido,"serie")
-                    resultados_peliculas=buscar_contenido(preferencia,plataforma.catalogo_peliculas.contenido,"película")
+                    resultados_peliculas=buscar_contenido(preferencia,plataforma.catalogo_peliculas.contenido,"pelicula")
                     print("Resultados para la preferencia '"+preferencia+"':")
                     print("Series:")
                     for serie in resultados_series:
@@ -336,7 +362,8 @@ while opcion != 4:
                     for titulo in usuario_actual.historial:
                         print("- "+titulo)
             elif opcion_usuario==3:
-                series_ordenadas, peliculas_ordenadas = generar_recomendaciones(plataforma)
+                series_ordenadas = generar_recomendaciones(plataforma.catalogo_series,"serie")
+                peliculas_ordenadas = generar_recomendaciones(plataforma.catalogo_peliculas,"película")
                 print("Recomendaciones de series:")
                 for serie in series_ordenadas[:5]:
                     print("- "+serie.titulo)
@@ -347,6 +374,10 @@ while opcion != 4:
             print("Usuario no encontrado.")
     print(menu)
     opcion=int(input())
+    while opcion not in [1,2,3,4]:
+        print("Opción inválida.")
+        print(menu)
+        opcion=int(input())
 print("Gracias por usar WonderlandTV. ¡Hasta luego!")
 
 
