@@ -75,7 +75,7 @@ class GrafoContenido:
 
 #Funciones para gestionar usuarios y contenido
 def crear_contenido():
-    titulo=input("Ingrese el título del contenido: ")
+    titulo=input("Ingrese el título del contenido: ").title()
     generos_disponibles=[[1,"Accion"],[2,"Animacion"] ,[3,"Ciencia Ficcion"] , [4,"Comedia"], [5,"Crimen"], [6,"Drama"], [7,"Fantasia"], [8,"Romance"], [9,"Suspenso"], [10,"Terror"]]
     generos=[]
     cantidad=int(input("Ingrese la cantidad de géneros que tiene el contenido(max. 3): "))
@@ -95,17 +95,17 @@ def crear_contenido():
             if i[1]==genero:
                 generos_disponibles.remove(i)
     tipo=input("Ingrese el tipo de contenido (serie o película): ")
-    # Normalize input to 'pelicula' or 'serie' for internal logic
+    
     tipo = tipo.strip().lower()
     if tipo in ["pelicula","película"]:
         tipo = "pelicula"
     while tipo not in ["serie","pelicula"]:
         tipo=input("Tipo inválido. Ingrese el tipo de contenido (serie o película): ")
     if tipo=="pelicula":
-        n_contenido=Contenido(pelicula=True,serie=False,titulo=titulo,genero=genero)
+        n_contenido=Contenido(pelicula=True,serie=False,titulo=titulo,genero=generos)
     else:
         tipo="serie"
-        n_contenido=Contenido(pelicula=False,serie=True,titulo=titulo,genero=genero)
+        n_contenido=Contenido(pelicula=False,serie=True,titulo=titulo,genero=generos)
     return n_contenido
 
 def insertar_en_arbol(nodo, contenido):
