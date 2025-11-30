@@ -94,17 +94,18 @@ def crear_contenido():
         for i in generos_disponibles:
             if i[1]==genero:
                 generos_disponibles.remove(i)
-    tipo=input("Ingrese el tipo de contenido (serie o película): ")
-    
-    tipo = tipo.strip().lower()
-    if tipo in ["pelicula","película"]:
-        tipo = "pelicula"
-    while tipo not in ["serie","pelicula"]:
-        tipo=input("Tipo inválido. Ingrese el tipo de contenido (serie o película): ")
-    if tipo=="pelicula":
+    tipos="""
+    1. Película
+    2. Serie
+    """
+    print(tipos)
+    tipo=int(input("Ingrese el tipo de contenido: "))
+    while tipo not in [1,2]:
+        print(tipos)
+        tipo=int(input("Ingrese el tipo de contenido: "))
+    if tipo==1:
         n_contenido=Contenido(pelicula=True,serie=False,titulo=titulo,genero=generos)
     else:
-        tipo="serie"
         n_contenido=Contenido(pelicula=False,serie=True,titulo=titulo,genero=generos)
     return n_contenido
 
@@ -140,15 +141,29 @@ def insertar_contenido(plataforma, contenido, tipo):
 
 
 def crear_usuario():
-    generos_validos = ["Accion", "Animacion", "Ciencia Ficcion", "Comedia", "Crimen", "Drama", "Fantasia", "Romance", "Suspenso", "Terror"]
+    generos_validos = [[1,"Accion"],[2,"Animacion"] ,[3,"Ciencia Ficcion"] , [4,"Comedia"], [5,"Crimen"], [6,"Drama"], [7,"Fantasia"], [8,"Romance"], [9,"Suspenso"], [10,"Terror"]]
     n_nombre = input("Ingrese el nombre del usuario: ")
     n_edad = int(input("Ingrese la edad del usuario: "))
-    n_preferencias = input("Ingrese las preferencias del usuario (separadas por comas): ")
-    lista_preferencias = [p.strip().title() for p in n_preferencias.split(",")]
-    while not all(pref in generos_validos for pref in lista_preferencias):
-        print("Preferencia o sintaxis inválidas. Intente nuevamente.")
-        n_preferencias = input("Ingrese las preferencias del usuario (separadas por comas): ")
-        lista_preferencias = [p.strip().title() for p in n_preferencias.split(",")]
+    for g in generos_validos:
+        print(g)
+    n_preferencias = int(input("Ingrese la cantidad de preferencias del usuario(max. 3): "))
+    lista_preferencias = []
+    while n_preferencias <1 or n_preferencias >3:
+        print("Cantidad de preferencias inválida. Intente nuevamente.")
+        for g in generos_validos:
+            print(g)
+        n_preferencias = int(input("Ingrese la cantidad de preferencias del usuario(max. 3): "))
+    for p in range(n_preferencias):
+        pref=int(input(f"Ingrese la preferencia N°{p+1}: "))
+        while pref not in range(len(generos_validos)):
+            print("Opción inválida")
+            pref=int(input(f"Ingrese la preferencia N°{p+1}: "))
+        for i in generos_validos:
+            if i[0]==pref:
+                genero_p=i[1]
+                generos_validos.remove(i)
+        lista_preferencias.append(genero_p)
+        
     usuario = Usuario(n_nombre, n_edad, lista_preferencias)
     return usuario
 
@@ -165,10 +180,29 @@ def mostrar_datos_usuario(usuario):
 
 def usuarios_existentes(plataforma):
     print("Usarios existentes:")
+    usuarios=[]
+    indice=1
     actual=plataforma.usuarios.info
     while actual is not None:
-        print("- "+actual.nombre)
+        usuario=[indice,actual.nombre]
+        usuarios.append(usuario)
         actual=actual.sig
+        indice+=1
+    return usuarios
+
+def obtener_usuario(plataforma, idc):
+    """
+    Devuelve el objeto Usuario correspondiente al índice (1-based) mostrado por usuarios_existentes.
+    Retorna None si no existe.
+    """
+    actual = plataforma.usuarios.info
+    contador = 1
+    while actual is not None:
+        if contador == idc:
+            return actual
+        actual = actual.sig
+        contador += 1
+    return None
     
 def gestionar_usuarios(plataforma,usuario,accion):
     #si se desea agregar un usuario
@@ -247,16 +281,18 @@ def mostrar_catalogo(plataforma, tipo):
         if plataforma.catalogo_peliculas.contenido is None:
             return None
         recorrer_inorder(plataforma.catalogo_peliculas.contenido, lista_ordenada)
-    resultado = ""
+    resultado = []
+    indice = 1
     for item in lista_ordenada:
-        resultado = resultado + item + "\n"
-    
+        cont=[indice,item]
+        resultado.append(cont)
+        indice =indice+ 1
     return resultado
 
 #funcion para buscar contenido segun preferencias (de forma recursiva)
 def buscar_contenido(preferencia, catalogo, tipo):
     """
-    Busca contenido en un árbol (Catalogo node) según la preferencia de género.
+    Busca contenido en un árbol (Catalogo nodo) según la preferencia de género.
     catalogo: una instancia de Catalogo (nodo) o None.
     """
     resultados = []
@@ -310,6 +346,32 @@ def recomendar_por_grafo(plataforma, contenido):
             return [c.titulo for c in relacionados][:5]  # Máx. 5 recomendaciones
     return []
 
+def dfs_grafo(plataforma, nodo_inicial, visitado=None):
+    if visitado is None:
+        visitado = set()
+
+    if nodo_inicial not in visitado:
+        visitado.add(nodo_inicial)
+        print(plataforma.grafo.nodos[nodo_inicial].titulo)  # Mostrar película o serie
+
+        for vecino in plataforma.grafo.aristas[nodo_inicial]:
+            if vecino not in visitado:
+                dfs_grafo(plataforma, vecino, visitado)
+
+def bfs_grafo(plataforma, nodo_inicial):
+    visitado = set()
+    cola = [nodo_inicial]
+
+    while cola !=[]:
+        nodo_actual = cola.pop(0)
+        if nodo_actual not in visitado:
+            visitado.add(nodo_actual)
+            print(plataforma.grafo.nodos[nodo_actual].titulo)  # Mostrar película o serie
+
+            for vecino in plataforma.grafo.aristas[nodo_actual]:
+                if vecino not in visitado:
+                    cola.append(vecino)
+
 # Programa principal
 plataforma=PlataformaStreaming()
 usuario1=Usuario("Alice",25,["Ciencia Ficcion","Drama"])
@@ -321,12 +383,20 @@ gestionar_usuarios(plataforma,usuario3,"agregar")
 
 pelicula1=Contenido(pelicula=True,serie=False,titulo="Inception",genero=["Ciencia Ficcion","Accion"])
 pelicula2=Contenido(pelicula=True,serie=False,titulo="The Godfather",genero=["Crimen","Drama"])
+pelicula3=Contenido(pelicula=True,serie=False,titulo="Matrix",genero=["Ciencia Ficcion","Accion"])
+pelicula4=Contenido(pelicula=True,serie=False,titulo="John Wick",genero=["Accion","Crimen"])
 serie1=Contenido(pelicula=False,serie=True,titulo="Stranger Things",genero=["Ciencia Ficcion","Suspenso"])
 serie2=Contenido(pelicula=False,serie=True,titulo="Breaking Bad",genero=["Crimen","Drama"])
+serie3=Contenido(pelicula=False,serie=True,titulo="Heartstopper",genero=["Romance","Drama"])
+serie4=Contenido(pelicula=False,serie=True,titulo="The witcher",genero=["Fantasia","Drama"])
 insertar_contenido(plataforma,pelicula1,"pelicula")
 insertar_contenido(plataforma,pelicula2,"pelicula")
+insertar_contenido(plataforma,pelicula3,"pelicula")
+insertar_contenido(plataforma,pelicula4,"pelicula")
 insertar_contenido(plataforma,serie1,"serie")
 insertar_contenido(plataforma,serie2,"serie")
+insertar_contenido(plataforma,serie3,"serie")
+insertar_contenido(plataforma,serie4,"serie")
 
 print("Bienvenido a la plataforma de streaming WonderlandTV.")
 menu="""
@@ -351,28 +421,36 @@ while opcion != 4:
         3.Mostrar datos de usuario
         4.Atrás
         """
-        opcion_usuario=int(input(menu_usuarios))
-        if opcion_usuario==1:
-            nuevo_usuario=crear_usuario()
-            gestionar_usuarios(plataforma,nuevo_usuario,"agregar")
-        elif opcion_usuario==2:
-            usuarios_existentes(plataforma)
-            nombre_eliminar=input("Ingrese el nombre del usuario a eliminar: ")
-            usuario_eliminar=Usuario(nombre_eliminar,0,[])
-            gestionar_usuarios(plataforma,usuario_eliminar,"eliminar")
-        elif opcion_usuario==3:
-            usuarios_existentes(plataforma)
-            nombre_mostrar=input("Ingrese el nombre del usuario a mostrar: ")
-            usuario_mostrar=Usuario(nombre_mostrar,0,[])
-            datos=gestionar_usuarios(plataforma,usuario_mostrar,"mostrar")
-            if datos is not None:
-                print(datos)
-            else:
-                print("Usuario no encontrado.")
-        elif opcion_usuario==4:
-            pass  # Volver al menú principal
-        else:
+        print(menu_usuarios)
+        opcion_usuario=int(input())
+        while opcion_usuario not in [1,2,3,4]:
+            print(menu_usuarios)
             print("Opción inválida.")
+            opcion_usuario=int(input())
+        while opcion_usuario != 4:
+            if opcion_usuario==1:
+                nuevo_usuario=crear_usuario()
+                gestionar_usuarios(plataforma,nuevo_usuario,"agregar")
+            elif opcion_usuario==2:
+                usuarios_existentes(plataforma)
+                nombre_eliminar=input("Ingrese el nombre del usuario a eliminar: ")
+                usuario_eliminar=Usuario(nombre_eliminar,0,[])
+                gestionar_usuarios(plataforma,usuario_eliminar,"eliminar")
+            elif opcion_usuario==3:
+                usuarios_existentes(plataforma)
+                nombre_mostrar=input("Ingrese el nombre del usuario a mostrar: ")
+                usuario_mostrar=Usuario(nombre_mostrar,0,[])
+                datos=gestionar_usuarios(plataforma,usuario_mostrar,"mostrar")
+                if datos is not None:
+                    print(datos)
+                else:
+                    print("Usuario no encontrado.")
+            print(menu_usuarios)
+            opcion_usuario=int(input())
+            while opcion_usuario not in [1,2,3,4]:
+                print(menu_usuarios)
+                print("Opción inválida.")
+                opcion_usuario=int(input())
     elif opcion==2:
         menu_contenido="""
         Gestión de contenido:
@@ -380,30 +458,53 @@ while opcion != 4:
         2.Ver catálogo
         3.Atrás    
         """
-        opcion_contenido=int(input(menu_contenido))
-        if opcion_contenido==1:
-            nuevo_contenido=crear_contenido()
-            tipo=nuevo_contenido.serie and "serie" or "pelicula"
-            insertar_contenido(plataforma,nuevo_contenido,tipo)
-        elif opcion_contenido==2:
-            tipo_catalogo=input("Ingrese el tipo de catálogo a mostrar (serie o película): ")
-            while tipo_catalogo not in ["serie","pelicula"]:
-                tipo_catalogo=input("Tipo inválido. Ingrese el tipo de catálogo a mostrar (serie o película): ")
-            catalogo=mostrar_catalogo(plataforma,tipo_catalogo)
-            print("Catálogo de "+tipo_catalogo+"s:\n"+catalogo)
-        elif opcion_contenido==3:
-            pass  # Volver al menú principal
-        else:
+        print(menu_contenido)
+        opcion_contenido=int(input())
+        while opcion_contenido not in [1,2,3]:
+            print(menu_contenido)
             print("Opción inválida.")
+            opcion_contenido=int(input())
+        while opcion_contenido != 3:
+            if opcion_contenido==1:
+                nuevo_contenido=crear_contenido()
+                if nuevo_contenido.pelicula==True:
+                    tipo="pelicula"
+                else:
+                    tipo="serie"
+                insertar_contenido(plataforma,nuevo_contenido,tipo)
+                print("Nuevo contenido disponible para los usuarios")
+            elif opcion_contenido==2:
+                tipo_catalogo=input("Ingrese el tipo de catálogo a mostrar (serie o película): ")
+                while tipo_catalogo not in ["serie","pelicula"]:
+                    tipo_catalogo=input("Tipo inválido. Ingrese el tipo de catálogo a mostrar (serie o película): ")
+                catalogo=mostrar_catalogo(plataforma,tipo_catalogo)
+                if not catalogo:
+                    print(f"No hay {tipo_catalogo}s en el catálogo.")
+                else:
+                    print(f"Catálogo de {tipo_catalogo}s:")
+                    for idx, item in catalogo:
+                        print(f"{idx}. {item}")
+            print(menu_contenido)
+            opcion_contenido=int(input())
+            while opcion_contenido not in [1,2,3]:
+                print(menu_contenido)
+                print("Opción inválida.")
+                opcion_contenido=int(input())
     elif opcion==3:
-        usuarios_existentes(plataforma)
-        nombre_usuario=input("Ingrese su nombre de usuario: ")
-        actual=plataforma.usuarios.info
-        usuario_actual=None
-        while actual is not None:
-            if actual.nombre==nombre_usuario:
-                usuario_actual=actual
-            actual=actual.sig
+        us_ex=usuarios_existentes(plataforma)
+        if us_ex==[]:
+            print("No hay usuarios registrados. Por favor, cree al menos un usuario primero.")
+        for u in us_ex:
+            print(f"{u[0]} {u[1]}")
+        op=int(input("Ingrese una opción: "))
+        valid_indices = [u[0] for u in us_ex]
+        while op not in valid_indices:
+            print("Opción inválida")
+            us_ex=usuarios_existentes(plataforma)
+            for u in us_ex:
+                print(f"{u[0]} {u[1]}")
+            op=int(input("Ingrese una opción: "))
+        usuario_actual = obtener_usuario(plataforma, op)
         if usuario_actual is not None:
             print("Bienvenido, "+usuario_actual.nombre+"!")
             menu_usuario="""
@@ -416,100 +517,168 @@ while opcion != 4:
             """
             print(menu_usuario)
             opcion_usuario=int(input())
-            if opcion_usuario==1:
-                for preferencia in usuario_actual.preferencias:
-                    resultados_series=buscar_contenido(preferencia,plataforma.catalogo_series.contenido,"serie")
-                    resultados_peliculas=buscar_contenido(preferencia,plataforma.catalogo_peliculas.contenido,"pelicula")
-                    print("Resultados para la preferencia '"+preferencia+"':")
-                    print("Series:")
-                    for serie in resultados_series:
-                        print("- "+serie.titulo)
-                    print("Películas:")
-                    for pelicula in resultados_peliculas:
-                        print("- "+pelicula.titulo)
-            elif opcion_usuario==2:
-                if usuario_actual.historial is None:
-                    print("No hay historial de visualización.")
-                else:
-                    print("Historial de visualización:")
-                    for titulo in usuario_actual.historial:
-                        print("- "+titulo)
-            elif opcion_usuario==3:
-                series_ordenadas = generar_recomendaciones(plataforma, "serie")
-                peliculas_ordenadas = generar_recomendaciones(plataforma, "pelicula")
-                print("Recomendaciones de series:")
-                for serie in series_ordenadas[:5]:
-                    print("- "+serie.titulo)
-                print("Recomendaciones de películas:")
-                for pelicula in peliculas_ordenadas[:5]:
-                    print("- "+pelicula.titulo)
-                print("Recomendaciones basadas en contenido similar:")
-                for item in usuario_actual.historial:
-                    # Buscamos el contenido real con ese título
-                    for idc, cont in plataforma.grafo.nodos.items():
-                        if cont.titulo == item:
-                            recomendaciones = recomendar_por_grafo(plataforma, cont)
-                            print(f"A partir de '{item}': {', '.join(recomendaciones)}")
-            elif opcion_usuario==4:
-                menu_peli_serie="""
-                1.Ver catálogo de películas
-                2.Ver catálogo de series
-                3.Atrás
-                """
-                print(menu_peli_serie)
-                opcion_peli_serie=int(input())
-                if opcion_peli_serie==1:
-                    catalogo=mostrar_catalogo(plataforma,"pelicula")
-                    print("Catálogo de películas:\n"+catalogo)
-                    print("¿Qué película le gustaría ver?")
-                    opcion_pelicula=input()
-                    if opcion_pelicula not in catalogo:
-                        print("Película no encontrada en el catálogo.")
-                        catalogo=mostrar_catalogo(plataforma,"pelicula")
-                        print("Catálogo de películas:\n"+catalogo)
-                        print("¿Qué película le gustaría ver?")
-                        opcion_pelicula=input()
-                    # Buscar la película en el catálogo
-                    pelicula_encontrada=None
-                    while pelicula_encontrada is None:
-                        for idc, cont in plataforma.grafo.nodos.items(): 
-                            if cont.titulo == opcion_pelicula and cont.pelicula:
-                                pelicula_encontrada=cont
-                    if pelicula_encontrada is not None:
-                        ver_contenido(usuario_actual,pelicula_encontrada)
-                        print(f"Disfrutando de '{pelicula_encontrada.titulo}'...")
-                        puntuar_contenido(pelicula_encontrada)
-                        agregar_comentario(pelicula_encontrada)
-                elif opcion_peli_serie==2:
-                    catalogo=mostrar_catalogo(plataforma,"serie")
-                    print("Catálogo de series:\n"+catalogo)
-                    print("¿Qué serie le gustaría ver?")
-                    opcion_serie=input()
-                    # Buscar la serie en el catálogo
-                    if opcion_serie not in catalogo:
-                        print("Serie no encontrada en el catálogo.")
-                        catalogo=mostrar_catalogo(plataforma,"serie")
-                        print("Catálogo de series:\n"+catalogo)
-                        print("¿Qué serie le gustaría ver?")
-                        opcion_serie=input()
-                    serie_encontrada=None
-                    while serie_encontrada is None:
-                        for idc, cont in plataforma.grafo.nodos.items(): 
-                            if cont.titulo == opcion_serie and cont.serie:
-                                serie_encontrada=cont
-                    if serie_encontrada is not None:
-                        ver_contenido(usuario_actual,serie_encontrada)
-                        print(f"Disfrutando de '{serie_encontrada.titulo}'...")
-                        puntuar_contenido(serie_encontrada)
-                        agregar_comentario(serie_encontrada)
-                elif opcion_peli_serie==3:
-                    pass  # Volver al menú principal
-                else:
+            while opcion_usuario not in [1,2,3,4,5]:
+                print("Opción inválida.")
+                print(menu_usuario)
+                opcion_usuario=int(input())
+            while opcion_usuario !=5:
+                if opcion_usuario==1:
+                    for preferencia in usuario_actual.preferencias:
+                        resultados_series=buscar_contenido(preferencia,plataforma.catalogo_series.contenido,"serie")
+                        resultados_peliculas=buscar_contenido(preferencia,plataforma.catalogo_peliculas.contenido,"pelicula")
+                        print("Resultados para la preferencia '"+preferencia+"':")
+                        print("Series:")
+                        for serie in resultados_series:
+                            print("- "+serie.titulo)
+                        print("Películas:")
+                        for pelicula in resultados_peliculas:
+                            print("- "+pelicula.titulo)
+                elif opcion_usuario==2:
+                    if not usuario_actual.historial:
+                        print("No hay historial de visualización.")
+                    else:
+                        print("Historial de visualización:")
+                        for titulo in usuario_actual.historial:
+                            print("- "+titulo)
+                elif opcion_usuario==3:
+                    menu_recomendaciones="""
+                    1.Ver recomendaciones basadas en contenido similar
+                    2.Buscar recomendaciones en base a lo último visto
+                    3.Explorar contenido relacionado
+                    4.Atrás
+                    """
+                    print(menu_recomendaciones)
+                    opcion_recomendaciones=int(input())
+                    while opcion_recomendaciones not in [1,2,3,4]:
+                        print("Opción inválida")
+                        print(menu_recomendaciones)
+                        opcion_recomendaciones=int(input())
+                    while opcion_recomendaciones != 4:
+                        if opcion_recomendaciones==1:
+                            print("Recomendaciones basadas en contenido similar:")
+                            series_ordenadas = generar_recomendaciones(plataforma, "serie")
+                            peliculas_ordenadas = generar_recomendaciones(plataforma, "pelicula")
+                            print("Recomendaciones de series:")
+                            for serie in series_ordenadas[:5]:
+                                print("- "+serie.titulo)
+                            print("Recomendaciones de películas:")
+                            for pelicula in peliculas_ordenadas[:5]:
+                                print("- "+pelicula.titulo)
+                        elif opcion_recomendaciones ==2:
+                            # Revisar historial antes de acceder al último visto
+                            if usuario_actual.historial ==[]:
+                                print("No hay historial de visualización. Mire algo primero para obtener recomendaciones basadas en lo último visto.")
+                            else:
+                                ultimo_visto = usuario_actual.historial[-1]
+                                # Buscar el nodo en el grafo por título
+                                for idc, cont in plataforma.grafo.nodos.items():
+                                    if cont.titulo==ultimo_visto:
+                                        dfs_grafo(plataforma,idc)
+                        elif opcion_recomendaciones==3:
+                            # Revisar historial antes de explorar contenido relacionado
+                            if usuario_actual.historial is None:
+                                print("No hay historial de visualización. Mire algo primero para explorar contenido relacionado.")
+                            else:
+                                print("Contenido relacionado")
+                                ultimo_visto=usuario_actual.historial[-1]
+                                for idc,cont in plataforma.grafo.nodos.items():
+                                    if cont.titulo==ultimo_visto:
+                                        bfs_grafo(plataforma,idc)
+                        print(menu_recomendaciones)
+                        opcion_recomendaciones=int(input())
+                elif opcion_usuario==4:
+                    menu_peli_serie="""
+                    1.Ver catálogo de películas
+                    2.Ver catálogo de series
+                    3.Atrás
+                    """
+                    print(menu_peli_serie)
+                    opcion_peli_serie=int(input())
+                    while opcion_peli_serie not in [1,2,3]:
+                        print("Opción inválida.")
+                        print(menu_peli_serie)
+                        opcion_peli_serie=int(input())
+                    while opcion_peli_serie in [1,2]:
+                        if opcion_peli_serie==1:
+                            catalogo=mostrar_catalogo(plataforma,"pelicula")
+                            if catalogo is None:
+                                print("No hay películas en el catálogo.")
+                            else:
+                                print("Catálogo de películas:")
+                                for idx, item in catalogo:
+                                    print(f"{idx}. {item}")
+                            print("¿Qué película le gustaría ver?")
+                            opcion_pelicula=int(input())
+                            while opcion_pelicula not in range(1,len(catalogo)+1):
+                                print("Película no encontrada en el catálogo.")
+                                catalogo=mostrar_catalogo(plataforma,"pelicula")
+                                if not catalogo:
+                                    print("No hay películas en el catálogo.")
+                                else:
+                                    print("Catálogo de películas:")
+                                    for idx, item in catalogo:
+                                        print(f"{idx}. {item}")
+                                print("¿Qué película le gustaría ver?")
+                                opcion_pelicula=int(input())
+                            # Buscar la película en el catálogo
+                            pelicula_encontrada=None
+                            for i in range(len(catalogo)):
+                                if catalogo[i][0]==opcion_pelicula:
+                                    titulo_buscar=catalogo[i][1].split("-")[0].strip()
+                                    for idc, cont in plataforma.grafo.nodos.items(): 
+                                        if cont.titulo == titulo_buscar and cont.pelicula:
+                                            pelicula_encontrada=cont
+                            if pelicula_encontrada is not None:
+                                ver_contenido(usuario_actual,pelicula_encontrada)
+                                print(f"Disfrutando de '{pelicula_encontrada.titulo}'...")
+                                puntuar_contenido(pelicula_encontrada)
+                                agregar_comentario(pelicula_encontrada)
+                        elif opcion_peli_serie==2:
+                            catalogo=mostrar_catalogo(plataforma,"serie")
+                            if catalogo is None:
+                                print("No hay series en el catálogo.")
+                            else:
+                                print("Catálogo de series:")
+                                for idx, item in catalogo:
+                                    print(f"{idx}. {item}")
+                            print("¿Qué serie le gustaría ver?")
+                            opcion_serie=int(input())
+                            while opcion_serie not in range(1,len(catalogo)+1):
+                                print("Serie no encontrada en el catálogo.")
+                                catalogo=mostrar_catalogo(plataforma,"serie")
+                                if catalogo is None:
+                                    print("No hay series en el catálogo.")
+                                else:
+                                    print("Catálogo de series:")
+                                    for idx, item in catalogo:
+                                        print(f"{idx}. {item}")
+                                print("¿Qué serie le gustaría ver?")
+                                opcion_serie=int(input())
+                            # Buscar la serie en el catálogo
+                            serie_encontrada=None
+                            for i in range(len(catalogo)):
+                                if catalogo[i][0]==opcion_serie:
+                                    titulo_buscar=catalogo[i][1].split("-")[0].strip()
+                                    for idc, cont in plataforma.grafo.nodos.items(): 
+                                        if cont.titulo == titulo_buscar and cont.serie:
+                                            serie_encontrada=cont
+                            if serie_encontrada is not None:
+                                ver_contenido(usuario_actual,serie_encontrada)
+                                print(f"Disfrutando de '{serie_encontrada.titulo}'...")
+                                puntuar_contenido(serie_encontrada)
+                                agregar_comentario(serie_encontrada)
+                        print(menu_peli_serie)
+                        opcion_peli_serie=int(input())
+                        while opcion_peli_serie not in [1,2,3]:
+                            print("Opción inválida.")
+                            print(menu_peli_serie)
+                            opcion_peli_serie=int(input())
+                print(menu_usuario)
+                opcion_usuario=int(input())
+                while opcion_usuario not in [1,2,3,4,5]:
                     print("Opción inválida.")
-            elif opcion_usuario==5:
-                pass  # Volver al menú principal
-        else:
-            print("Usuario no encontrado.")
+                    print(menu_usuario)
+                    opcion_usuario=int(input())
     print(menu)
     opcion=int(input())
     while opcion not in [1,2,3,4]:
