@@ -6,11 +6,12 @@
 class PlataformaStreaming():
     def __init__(self):
         self.catalogo_series=Catalogo()
+        self.arbol_series=ArbolSeries()
         self.catalogo_peliculas=Catalogo()
         self.usuarios=Usuarios()
         self.grafo = GrafoContenido()
         self.id_contenido = 0  # Para numerar los nodos del grafo
-
+        self.grafo_episodios = GrafoEpisodios()
 
 class Usuarios():
     def __init__(self):
@@ -27,17 +28,14 @@ class Usuario():
         self.sig=None
 
 class Contenido():
-    def __init__(self, pelicula, serie, titulo, genero=None, popularidad=0, likes=0):
+    def __init__(self, pelicula, serie, titulo, genero, popularidad=0, likes=0):
         self.pelicula = pelicula
         self.serie = serie
         self.titulo = titulo
         self.temporadas = 0           
         self.episodios = []           
         self.duracion = 0             
-        if genero:
-            self.genero = genero
-        else:
-            self.genero = ["Accion", "Animacion", "Ciencia Ficcion", "Comedia", "Crimen", "Drama", "Fantasia", "Romance", "Suspenso", "Terror"]
+        self.genero=genero
         self.popularidad = popularidad  # Aumenta cuando los usuarios lo ven
         self.likes = likes              # Aumenta según puntaje dado por usuarios
         self.comentarios = []           # Lista de comentarios de usuarios
@@ -73,8 +71,43 @@ class GrafoContenido:
     def obtener_relacionados(self, id_contenido):
         return [self.nodos[id] for id in self.aristas.get(id_contenido, [])]
 
+class GrafoEpisodios:
+    def __init__(self):
+        self.grafo = {}  # {episodio: [episodios_que_dependen_de_él]}
+
+    def agregar_episodio(self, episodio):
+        if episodio not in self.grafo:
+            self.grafo[episodio] = []
+
+    def agregar_dependencia(self, episodio1, episodio2):
+        # episodio1 -> episodio2
+        self.grafo[episodio1].append(episodio2)
+
+class NodoSerie:
+    def __init__(self, nombre):
+        self.nombre = nombre
+        self.hijos = []  # Temporadas y episodios
+
+
+class ArbolSeries:
+    def __init__(self):
+        self.series = {}  # {titulo: nodo_raiz}
+
+    def agregar_serie(self, titulo):
+        self.series[titulo] = NodoSerie(titulo)
+        return self.series[titulo]
+
+    def agregar_temporada(self, titulo_serie, nombre_temporada):
+        temporada = NodoSerie(nombre_temporada)
+        self.series[titulo_serie].hijos.append(temporada)
+        return temporada     
+
+    def agregar_episodio(self, nodo_temporada, nombre_episodio):
+        nodo_temporada.hijos.append(NodoSerie(nombre_episodio))
+
+
 #Funciones para gestionar usuarios y contenido
-def crear_contenido():
+def crear_contenido(plataforma):
     titulo=input("Ingrese el título del contenido: ").title()
     generos_disponibles=[[1,"Accion"],[2,"Animacion"] ,[3,"Ciencia Ficcion"] , [4,"Comedia"], [5,"Crimen"], [6,"Drama"], [7,"Fantasia"], [8,"Romance"], [9,"Suspenso"], [10,"Terror"]]
     generos=[]
@@ -105,8 +138,20 @@ def crear_contenido():
         tipo=int(input("Ingrese el tipo de contenido: "))
     if tipo==1:
         n_contenido=Contenido(pelicula=True,serie=False,titulo=titulo,genero=generos)
+        dur=int(input("Ingrese la duración de la película(en minutos): "))
+        n_contenido.duracion=dur
     else:
         n_contenido=Contenido(pelicula=False,serie=True,titulo=titulo,genero=generos)
+        plataforma.arbol_series.agregar_serie(titulo)
+        temp=int(input("Ingrese la cantidad de temporadas que tiene la serie: "))
+        epi=int(input("Ingrese la cantidad de episodios que tiene cada temporada: "))
+        for t in range(temp):
+            n_temp=f"Temporada {t+1}"
+            nodo_temporada = plataforma.arbol_series.agregar_temporada(titulo, n_temp)
+            for e in range(epi):
+                n_epi="Episodio "+str(e+1)
+                plataforma.arbol_series.agregar_episodio(nodo_temporada, n_epi)
+            n_contenido.temporadas+=1
     return n_contenido
 
 def insertar_en_arbol(nodo, contenido):
@@ -126,6 +171,7 @@ def insertar_contenido(plataforma, contenido, tipo):
     if tipo == "serie":
         plataforma.catalogo_series.contenido = insertar_en_arbol(plataforma.catalogo_series.contenido, contenido)
         plataforma.catalogo_series.tamanio += 1
+        plataforma.arbol_series.agregar_serie(contenido.titulo)
     else:
         plataforma.catalogo_peliculas.contenido = insertar_en_arbol(plataforma.catalogo_peliculas.contenido, contenido)
         plataforma.catalogo_peliculas.tamanio += 1
@@ -139,7 +185,61 @@ def insertar_contenido(plataforma, contenido, tipo):
             if any(genero in cont_existente.genero for genero in contenido.genero):
                 plataforma.grafo.agregar_relacion(id_actual, id_existente)
 
+def navegar_series(plataforma, usuario=None):
+    print("Series disponibles:")
+    lista_titulos=list(plataforma.arbol_series.series.keys())
+    if lista_titulos ==[]:
+        print("No hay series registradas en la plataforma.")
+        return
+    for idx, titulo in enumerate(lista_titulos, start=1):
+        print(f"{idx}. {titulo}")
+    serie = int(input("Elija una serie: "))
+    while serie not in range(1, len(lista_titulos)+1):
+        print("Serie inexistente.")
+        for idx, titulo in enumerate(lista_titulos, start=1):
+            print(f"{idx}. {titulo}")
+        serie = int(input("Elija una serie: "))
+    nodo_serie = plataforma.arbol_series.series[lista_titulos[serie-1]]
 
+    print("\nTemporadas:")
+    if nodo_serie.hijos ==[]:
+        print("No hay temporadas disponibles para esta serie.")
+        return
+    for idx, t in enumerate(nodo_serie.hijos, start=1):
+        print(f"{idx}. {t.nombre}")
+    temp_num = int(input("Seleccione temporada: "))
+    while temp_num not in range(1, len(nodo_serie.hijos) + 1):
+        print("Opción inválida")
+        for idx, t in enumerate(nodo_serie.hijos, start=1):
+            print(f"{idx}. {t.nombre}")
+        temp_num = int(input("Seleccione temporada: "))
+
+    nodo_temporada = nodo_serie.hijos[temp_num - 1]
+    print("\nEpisodios:")
+    if not nodo_temporada.hijos:
+        print("No hay episodios disponibles para esta temporada.")
+        return
+    for idx, e in enumerate(nodo_temporada.hijos, start=1):
+        print(f"{idx}. {e.nombre}")
+    epi_num = int(input("Seleccione episodio: "))
+    while epi_num not in range(1, len(nodo_temporada.hijos) + 1):
+        print("Opción inválida")
+        for idx, e in enumerate(nodo_temporada.hijos, start=1):
+            print(f"{idx}. {e.nombre}")
+        epi_num = int(input("Seleccione episodio: "))
+    print(f"\n► Reproduciendo {nodo_temporada.hijos[epi_num - 1].nombre}...")
+    # Buscamos el objeto Contenido en el grafo por título de la serie
+    titulo_serie = lista_titulos[serie-1]
+    serie_encontrada = None
+    for idc, cont in plataforma.grafo.nodos.items():
+        if cont.titulo == titulo_serie and cont.serie:
+            serie_encontrada = cont
+            break
+    if serie_encontrada is not None and usuario is not None:
+        ver_contenido(usuario, serie_encontrada)
+        puntuar_contenido(serie_encontrada)
+        agregar_comentario(serie_encontrada)
+    
 def crear_usuario():
     generos_validos = [[1,"Accion"],[2,"Animacion"] ,[3,"Ciencia Ficcion"] , [4,"Comedia"], [5,"Crimen"], [6,"Drama"], [7,"Fantasia"], [8,"Romance"], [9,"Suspenso"], [10,"Terror"]]
     n_nombre = input("Ingrese el nombre del usuario: ")
@@ -372,6 +472,23 @@ def bfs_grafo(plataforma, nodo_inicial):
                 if vecino not in visitado:
                     cola.append(vecino)
 
+def dfs_topologico(nodo, grafo, visitado, pila):
+    visitado.add(nodo)
+    for vecino in grafo[nodo]:
+        if vecino not in visitado:
+            dfs_topologico(vecino, grafo, visitado, pila)
+    pila.append(nodo)
+
+def ordenamiento_topologico(grafo):
+    visitado = set()
+    pila = []
+
+    for nodo in grafo:
+        if nodo not in visitado:
+            dfs_topologico(nodo, grafo, visitado, pila)
+
+    return pila[::-1]
+
 # Programa principal
 plataforma=PlataformaStreaming()
 usuario1=Usuario("Alice",25,["Ciencia Ficcion","Drama"])
@@ -389,6 +506,25 @@ serie1=Contenido(pelicula=False,serie=True,titulo="Stranger Things",genero=["Cie
 serie2=Contenido(pelicula=False,serie=True,titulo="Breaking Bad",genero=["Crimen","Drama"])
 serie3=Contenido(pelicula=False,serie=True,titulo="Heartstopper",genero=["Romance","Drama"])
 serie4=Contenido(pelicula=False,serie=True,titulo="The witcher",genero=["Fantasia","Drama"])
+plataforma.arbol_series.agregar_serie(serie1.titulo)
+plataforma.arbol_series.agregar_serie(serie2.titulo)
+plataforma.arbol_series.agregar_serie(serie3.titulo)
+plataforma.arbol_series.agregar_serie(serie4.titulo)
+cant_temp_general=5
+cant_epi_general=10
+for t in range(cant_temp_general):
+    titulo_temp="Temporada "+str(t+1)
+    nodo_temp1 = plataforma.arbol_series.agregar_temporada(serie1.titulo,titulo_temp)
+    nodo_temp2 = plataforma.arbol_series.agregar_temporada(serie2.titulo,titulo_temp)
+    nodo_temp3 = plataforma.arbol_series.agregar_temporada(serie3.titulo,titulo_temp)
+    nodo_temp4 = plataforma.arbol_series.agregar_temporada(serie4.titulo,titulo_temp)
+    for e in range(cant_epi_general):
+        titulo_epi="Episodio "+str(e+1)
+        plataforma.arbol_series.agregar_episodio(nodo_temp1,titulo_epi)
+        plataforma.arbol_series.agregar_episodio(nodo_temp2,titulo_epi)
+        plataforma.arbol_series.agregar_episodio(nodo_temp3,titulo_epi)
+        plataforma.arbol_series.agregar_episodio(nodo_temp4,titulo_epi)
+
 insertar_contenido(plataforma,pelicula1,"pelicula")
 insertar_contenido(plataforma,pelicula2,"pelicula")
 insertar_contenido(plataforma,pelicula3,"pelicula")
@@ -466,7 +602,7 @@ while opcion != 4:
             opcion_contenido=int(input())
         while opcion_contenido != 3:
             if opcion_contenido==1:
-                nuevo_contenido=crear_contenido()
+                nuevo_contenido=crear_contenido(plataforma)
                 if nuevo_contenido.pelicula==True:
                     tipo="pelicula"
                 else:
@@ -566,7 +702,7 @@ while opcion != 4:
                                 print("- "+pelicula.titulo)
                         elif opcion_recomendaciones ==2:
                             # Revisar historial antes de acceder al último visto
-                            if usuario_actual.historial ==[]:
+                            if not usuario_actual.historial:
                                 print("No hay historial de visualización. Mire algo primero para obtener recomendaciones basadas en lo último visto.")
                             else:
                                 ultimo_visto = usuario_actual.historial[-1]
@@ -576,7 +712,7 @@ while opcion != 4:
                                         dfs_grafo(plataforma,idc)
                         elif opcion_recomendaciones==3:
                             # Revisar historial antes de explorar contenido relacionado
-                            if usuario_actual.historial is None:
+                            if usuario_actual.historial == []:
                                 print("No hay historial de visualización. Mire algo primero para explorar contenido relacionado.")
                             else:
                                 print("Contenido relacionado")
@@ -634,39 +770,7 @@ while opcion != 4:
                                 puntuar_contenido(pelicula_encontrada)
                                 agregar_comentario(pelicula_encontrada)
                         elif opcion_peli_serie==2:
-                            catalogo=mostrar_catalogo(plataforma,"serie")
-                            if catalogo is None:
-                                print("No hay series en el catálogo.")
-                            else:
-                                print("Catálogo de series:")
-                                for idx, item in catalogo:
-                                    print(f"{idx}. {item}")
-                            print("¿Qué serie le gustaría ver?")
-                            opcion_serie=int(input())
-                            while opcion_serie not in range(1,len(catalogo)+1):
-                                print("Serie no encontrada en el catálogo.")
-                                catalogo=mostrar_catalogo(plataforma,"serie")
-                                if catalogo is None:
-                                    print("No hay series en el catálogo.")
-                                else:
-                                    print("Catálogo de series:")
-                                    for idx, item in catalogo:
-                                        print(f"{idx}. {item}")
-                                print("¿Qué serie le gustaría ver?")
-                                opcion_serie=int(input())
-                            # Buscar la serie en el catálogo
-                            serie_encontrada=None
-                            for i in range(len(catalogo)):
-                                if catalogo[i][0]==opcion_serie:
-                                    titulo_buscar=catalogo[i][1].split("-")[0].strip()
-                                    for idc, cont in plataforma.grafo.nodos.items(): 
-                                        if cont.titulo == titulo_buscar and cont.serie:
-                                            serie_encontrada=cont
-                            if serie_encontrada is not None:
-                                ver_contenido(usuario_actual,serie_encontrada)
-                                print(f"Disfrutando de '{serie_encontrada.titulo}'...")
-                                puntuar_contenido(serie_encontrada)
-                                agregar_comentario(serie_encontrada)
+                            navegar_series(plataforma, usuario_actual)
                         print(menu_peli_serie)
                         opcion_peli_serie=int(input())
                         while opcion_peli_serie not in [1,2,3]:
